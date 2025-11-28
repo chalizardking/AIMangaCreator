@@ -7,10 +7,19 @@ struct GeneratorView: View {
     var body: some View {
         VStack(spacing: 16) {
             /// Prompt input
-            PromptInputView(
-                prompt: $viewModel.currentPrompt,
-                characterGuides: viewModel.selectedCharacters
-            )
+            VStack(alignment: .trailing) {
+                PromptInputView(
+                    prompt: $viewModel.currentPrompt,
+                    characterGuides: viewModel.selectedCharacters
+                )
+                
+                Button(action: { Task { await viewModel.refinePrompt() } }) {
+                    Label("Refine Prompt", systemImage: "wand.and.stars.inverse")
+                }
+                .disabled(viewModel.currentPrompt.isEmpty)
+                .buttonStyle(.borderless)
+                .font(.caption)
+            }
             
             /// Style selector
             Picker("Manga Style", selection: $viewModel.selectedStyle) {
@@ -49,6 +58,31 @@ struct GeneratorView: View {
                     Image(nsImage: generatedImage)
                         .resizable()
                         .scaledToFit()
+                        .frame(maxHeight: 400)
+                    
+                    HStack {
+                        Button("Copy Image") {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.writeObjects([generatedImage])
+                        }
+                        
+                        Button("Save Image") {
+                            let savePanel = NSSavePanel()
+                            savePanel.allowedContentTypes = [.png]
+                            savePanel.canCreateDirectories = true
+                            savePanel.nameFieldStringValue = "generated_panel.png"
+                            
+                            savePanel.begin { response in
+                                if response == .OK, let url = savePanel.url,
+                                   let tiff = generatedImage.tiffRepresentation,
+                                   let bitmap = NSBitmapImageRep(data: tiff),
+                                   let png = bitmap.representation(using: .png, properties: [:]) {
+                                    try? png.write(to: url)
+                                }
+                            }
+                        }
+                    }
                 }
             }
             

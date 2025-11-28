@@ -62,4 +62,20 @@ class PanelGeneratorViewModel: ObservableObject {
             throw error
         }
     }
+    
+    @MainActor
+    func refinePrompt() async {
+        guard !currentPrompt.isEmpty else { return }
+        
+        do {
+            let refined = try await aiProvider.refinePrompt(
+                original: currentPrompt,
+                style: selectedStyle,
+                context: selectedCharacters.map { $0.action }.joined(separator: ", ")
+            )
+            self.currentPrompt = refined
+        } catch {
+            self.error = error as? AppError ?? .unknown(error)
+        }
+    }
 }

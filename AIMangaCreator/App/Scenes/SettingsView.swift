@@ -6,41 +6,39 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("API Configuration") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("OpenAI API Key")
-                        .font(.headline)
-                    SecureField("sk-...", text: Binding(
+                APIKeyField(
+                    title: "OpenAI API Key",
+                    text: Binding(
                         get: { viewModel.openAIKey },
                         set: { viewModel.updateOpenAIKey($0) }
-                    ))
-                    Text("Used for DALL-E 3 image generation and GPT-4 prompt refinement")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                    ),
+                    status: viewModel.validationStatus["OpenAI"] ?? .unknown,
+                    onValidate: { Task { await viewModel.validateKey(for: "OpenAI") } },
+                    description: "Used for DALL-E 3 image generation and GPT-4 prompt refinement"
+                )
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Gemini API Key")
-                        .font(.headline)
-                    SecureField("AIza...", text: Binding(
+                APIKeyField(
+                    title: "Gemini API Key",
+                    text: Binding(
                         get: { viewModel.geminiKey },
                         set: { viewModel.updateGeminiKey($0) }
-                    ))
-                    Text("Used for Gemini Pro text refinement")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                    ),
+                    status: viewModel.validationStatus["Gemini"] ?? .unknown,
+                    onValidate: { Task { await viewModel.validateKey(for: "Gemini") } },
+                    description: "Used for Gemini Pro text refinement"
+                )
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("OpenRouter API Key")
-                        .font(.headline)
-                    SecureField("sk-or-...", text: Binding(
+                APIKeyField(
+                    title: "OpenRouter API Key",
+                    text: Binding(
                         get: { viewModel.openRouterKey },
                         set: { viewModel.updateOpenRouterKey($0) }
-                    ))
-                    Text("Used for accessing multiple LLM models")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                    ),
+                    status: viewModel.validationStatus["OpenRouter"] ?? .unknown,
+                    onValidate: { Task { await viewModel.validateKey(for: "OpenRouter") } },
+                    description: "Used for accessing multiple LLM models"
+                )
+            }
             }
 
             Section("Default Settings") {
@@ -101,4 +99,66 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+}
+
+struct APIKeyField: View {
+    let title: String
+    @Binding var text: String
+    let status: ValidationStatus
+    let onValidate: () -> Void
+    let description: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                ValidationBadge(status: status)
+            }
+            
+            HStack {
+                SecureField("Enter API Key", text: $text)
+                    .textFieldStyle(.roundedBorder)
+                
+                Button("Validate") {
+                    onValidate()
+                }
+                .disabled(text.isEmpty || status == .validating)
+            }
+            
+            Text(description)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            if case .invalid(let error) = status {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+        }
+    }
+}
+
+struct ValidationBadge: View {
+    let status: ValidationStatus
+    
+    var body: some View {
+        switch status {
+        case .unknown:
+            EmptyView()
+        case .validating:
+            ProgressView()
+                .scaleEffect(0.5)
+                .frame(width: 16, height: 16)
+        case .valid:
+            Label("Valid", systemImage: "checkmark.circle.fill")
+                .foregroundColor(.green)
+                .font(.caption)
+        case .invalid:
+            Label("Invalid", systemImage: "xmark.circle.fill")
+                .foregroundColor(.red)
+                .font(.caption)
+        }
+    }
 }

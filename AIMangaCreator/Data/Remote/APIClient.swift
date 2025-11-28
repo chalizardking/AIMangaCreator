@@ -65,6 +65,23 @@ class APIClient {
         
         return try decoder.decode(Response.self, from: data)
     }
+
+    func get<Response: Decodable>(
+        endpoint: String,
+        headers: [String: String] = [:],
+        baseURL: String = "https://api.openai.com"
+    ) async throws -> Response {
+        let url = try buildURL(endpoint, baseURL: baseURL)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+        
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+        
+        return try decoder.decode(Response.self, from: data)
+    }
     
     func cachedPost<Request: Encodable & Hashable, Response: Decodable>(
         endpoint: String,

@@ -17,9 +17,20 @@ struct PanelDetailView: View {
                 ))
                 .frame(minHeight: 100)
                 
-                Button("Generate") {
-                    Task {
-                        await viewModel.generatePanel(panel.id)
+                HStack {
+                    Button("Refine") {
+                        Task {
+                            await viewModel.refinePanelPrompt(panel.id)
+                        }
+                    }
+                    .disabled(panel.prompt.isEmpty)
+                    
+                    Spacer()
+                    
+                    Button("Generate") {
+                        Task {
+                            await viewModel.generatePanel(panel.id)
+                        }
                     }
                 }
             }

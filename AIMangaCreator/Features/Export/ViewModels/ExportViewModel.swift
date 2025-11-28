@@ -158,7 +158,24 @@ class ExportService: ExportServiceProtocol {
             progressHandler(Double(i) / 100.0)
         }
 
-        let outputPath = "/tmp/export_\(manga.title)_\(UUID().uuidString)\(configuration.format.fileExtension)"
+        // Sanitize manga title by replacing invalid filename characters
+        let sanitizedTitle = manga.title.replacingOccurrences(of: "[/:\\?%*|<>\"]", with: "_", options: .regularExpression)
+
+        // Use platform-appropriate temporary directory
+        let tempDir = FileManager.default.temporaryDirectory
+
+        // Create filename without the leading dot
+        let fileExtension = configuration.format.fileExtension.hasPrefix(".") ?
+            String(configuration.format.fileExtension.dropFirst()) :
+            configuration.format.fileExtension
+
+        // Build the URL using proper URL construction methods
+        let filename = "export_\(sanitizedTitle)_\(UUID().uuidString)"
+        let outputURL = tempDir
+            .appendingPathComponent(filename)
+            .appendingPathExtension(fileExtension)
+
+        let outputPath = outputURL.path
 
         /// For now, just create the export result
         return ExportResult(

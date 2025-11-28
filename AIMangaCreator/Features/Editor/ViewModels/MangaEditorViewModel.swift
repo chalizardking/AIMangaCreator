@@ -143,6 +143,23 @@ class MangaEditorViewModel: NSObject, ObservableObject {
         }
     }
     
+    func refinePanelPrompt(_ panelID: UUID) async {
+        guard var panel = manga.panels.first(where: { $0.id == panelID }),
+              !panel.prompt.isEmpty else { return }
+        
+        do {
+            let refined = try await aiProvider.refinePrompt(
+                original: panel.prompt,
+                style: manga.metadata.style,
+                context: panel.characterGuide.map { $0.action }.joined(separator: ", ")
+            )
+            panel.prompt = refined
+            updatePanel(panel)
+        } catch {
+            self.error = error as? AppError ?? .unknown(error)
+        }
+    }
+    
     // MARK: - Persistence
     func save() async {
         isSaving = true

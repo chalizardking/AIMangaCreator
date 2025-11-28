@@ -8,6 +8,17 @@
 import Foundation
 import Combine
 
+enum ValidationStatus: Equatable {
+    case unknown
+    case validating
+    case valid
+    case invalid(String)
+}
+
+struct OpenAIModelsResponse: Decodable { let data: [Model]; struct Model: Decodable { let id: String } }
+struct GeminiModelsResponse: Decodable { let models: [GeminiModel]; struct GeminiModel: Decodable { let name: String } }
+
+
 class SettingsViewModel: ObservableObject {
     @Published var openAIKey: String = ""
     @Published var geminiKey: String = "" 
@@ -16,6 +27,12 @@ class SettingsViewModel: ObservableObject {
     @Published var defaultStyleIndex: Int = 0
     @Published var autoSaveEnabled: Bool = true
     @Published var cacheImages: Bool = true
+    
+    @Published var validationStatus: [String: ValidationStatus] = [
+        "OpenAI": .unknown,
+        "Gemini": .unknown,
+        "OpenRouter": .unknown
+    ]
 
     private let keychain = KeychainService.shared
     private let defaults = UserDefaults.standard
@@ -100,5 +117,53 @@ class SettingsViewModel: ObservableObject {
         keychain.clearAll()
         /// Reload to update UI
         loadSettings()
+        validationStatus = ["OpenAI": .unknown, "Gemini": .unknown, "OpenRouter": .unknown]
+    }
+    
+    @MainActor
+    func validateKey(for provider: String) async {
+        validationStatus[provider] = .validating
+        
+        do {
+            switch provider {
+            case "OpenAI":
+                try await validateOpenAI()
+            case "Gemini":
+                try await validateGemini()
+            case "OpenRouter":
+                try await validateOpenRouter()
+            default:
+                break
+            }
+            validationStatus[provider] = .valid
+        } catch {
+            validationStatus[provider] = .invalid(error.localizedDescription)
+        }
+    }
+    
+    private func validateOpenAI() async throws {
+        guard !openAIKey.isEmpty else { throw AppError.invalidInput("API Key is empty") }
+        let _: OpenAIModelsResponse = try await APIClient.shared.get(
+            endpoint: "/v1/models",
+            headers: ["Authorization": "Bearer \(openAIKey)"],
+            baseURL: "https://api.openai.com"
+        )
+    }
+    
+    private func validateGemini() async throws {
+        guard !geminiKey.isEmpty else { throw AppError.invalidInput("API Key is empty") }
+        let _: GeminiModelsResponse = try await APIClient.shared.get(
+            endpoint: "/v1beta/models?key=\(geminiKey)",
+            baseURL: "https://generativelanguage.googleapis.com"
+        )
+    }
+    
+    private func validateOpenRouter() async throws {
+        guard !openRouterKey.isEmpty else { throw AppError.invalidInput("API Key is empty") }
+        let _: OpenAIModelsResponse = try await APIClient.shared.get(
+            endpoint: "/api/v1/models",
+            headers: ["Authorization": "Bearer \(openRouterKey)"],
+            baseURL: "https://openrouter.ai"
+        )
     }
 }
