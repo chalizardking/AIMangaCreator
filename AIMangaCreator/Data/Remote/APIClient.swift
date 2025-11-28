@@ -13,14 +13,31 @@ class APIClient {
         let typeInfo: Any.Type
     }
     
-    // Cache for deduplication
-    private var requestCache: [String: CacheEntry] = [:]
-    private let cacheLock = NSLock()
+    /// Cache for deduplication (actor-isolated for thread safety)
+    private actor CacheManager {
+        private var cache: [String: CacheEntry] = [:]
+        
+        func get(_ key: String) -> CacheEntry? {
+            if let entry = cache[key], entry.expiry > Date() {
+                return entry
+            } else {
+                cache.removeValue(forKey: key)
+                return nil
+            }
+        }
+        
+        func set(_ key: String, entry: CacheEntry) {
+            cache[key] = entry
+        }
+    }
+    
+    private let cacheManager = CacheManager()
     
     init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 60
-        config.timeoutIntervalForResource = 300 // 5 minutes for large uploads
+        /// 5 minutes for large uploads
+        config.timeoutIntervalForResource = 300
         config.waitsForConnectivity = true
         
         self.session = URLSession(configuration: config)
@@ -57,39 +74,29 @@ class APIClient {
     ) async throws -> Response {
         let cacheKey = "\(baseURL)\(endpoint)_\(body.hashValue)"
         
-        var cachedResponse: Response?
-        cacheLock.lock()
-        if let cached = requestCache[cacheKey] {
-            if cached.expiry <= Date() {
-                requestCache.removeValue(forKey: cacheKey)
-            } else if cached.typeInfo == Response.self,
-                      let typedData = cached.data as? Response {
-                cachedResponse = typedData
-            } else {
-                // Evict entries whose stored type no longer matches the request
-                requestCache.removeValue(forKey: cacheKey)
-            }
-        }
-        cacheLock.unlock()
-        if let cachedResponse {
-            return cachedResponse
+        /// Check cache using actor-isolated access
+        if let cached = await cacheManager.get(cacheKey),
+           cached.typeInfo == Response.self,
+           let typedData = cached.data as? Response {
+            return typedData
         }
         
+        /// Not in cache, make the request
         let result = try await post(endpoint: endpoint, body: body, baseURL: baseURL) as Response
         
-        cacheLock.lock()
-        requestCache[cacheKey] = CacheEntry(
+        /// Store in cache using actor-isolated access
+        let entry = CacheEntry(
             data: result,
             expiry: Date().addingTimeInterval(cacheDuration),
             typeInfo: Response.self
         )
-        cacheLock.unlock()
+        await cacheManager.set(cacheKey, entry: entry)
         
         return result
     }
     
     private func buildURL(_ endpoint: String, baseURL: String) throws -> URL {
-        // Handle full URLs passed as endpoint
+        /// Handle full URLs passed as endpoint
         if endpoint.lowercased().hasPrefix("http") {
             guard let url = URL(string: endpoint) else {
                 throw AppError.invalidInput("Invalid URL: \(endpoint)")

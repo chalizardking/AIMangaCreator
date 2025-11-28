@@ -6,27 +6,27 @@ struct GeneratorView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // Prompt input
+            /// Prompt input
             PromptInputView(
                 prompt: $viewModel.currentPrompt,
                 characterGuides: viewModel.selectedCharacters
             )
             
-            // Style selector
+            /// Style selector
             Picker("Manga Style", selection: $viewModel.selectedStyle) {
                 ForEach(MangaStyle.allCases, id: \.self) { style in
                     Text(style.name).tag(style)
                 }
             }
             
-            // Provider selector
+            /// Provider selector
             Picker("AI Provider", selection: $viewModel.selectedProviderType) {
                 ForEach(AIProviderType.allCases) { provider in
                     Text(provider.rawValue).tag(provider)
                 }
             }
             
-            // Generation button
+            /// Generation button
             Button(action: { Task { await generatePanel() } }) {
                 HStack {
                     if isGenerating {
@@ -39,9 +39,9 @@ struct GeneratorView: View {
                 }
             }
             .disabled(isGenerating || viewModel.currentPrompt.isEmpty)
-            .buttonStyle(.prominent)
+            .buttonStyle(.borderedProminent)
             
-            // Results preview
+            /// Results preview
             if let generatedImage = viewModel.lastGeneratedImage {
                 VStack {
                     Text("Generated Panel")

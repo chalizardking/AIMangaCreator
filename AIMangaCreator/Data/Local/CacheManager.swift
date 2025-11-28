@@ -13,7 +13,8 @@ class CacheManager {
         return mangaCache
     }()
     
-    private let diskSizeLimit: Int = 1_000_000_000 // 1GB
+    /// 1GB cache limit
+    private let diskSizeLimit: Int = 1_000_000_000
     private var memoryCache = NSCache<NSString, NSImage>()
     
     func setImage(_ image: NSImage, forKey key: String) {
@@ -47,7 +48,8 @@ class CacheManager {
         let attrs = try? fileManager.attributesOfFileSystem(forPath: cacheDirectory.path)
         let availableSpace = (attrs?[.systemFreeSize] as? NSNumber)?.int64Value ?? 0
         
-        if availableSpace < 100_000_000 { // Less than 100MB free
+        /// Less than 100MB free
+        if availableSpace < 100_000_000 {
             clearCache()
         }
     }

@@ -87,7 +87,7 @@ def evaluate_documents(documents):
             'clarity': evaluate_clarity(doc),
             'feasibility': evaluate_feasibility(doc),
             'innovation': evaluate_innovation(doc),
-            'total': sum(scores),
+            'total': score['completeness'] + score['clarity'] + score['feasibility'] + score['innovation'],
             'strengths': identify_strengths(doc),
             'weaknesses': identify_weaknesses(doc)
         }

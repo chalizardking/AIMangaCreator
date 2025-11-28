@@ -124,13 +124,19 @@ The design document should be based on the requirements document, so ensure it e
 
 ## **Important Constraints**
 
-- The model MUST create a '.claude/specs/{feature_name}/design.md' file if it doesn't already exist
+### File Creation Strategy
+- The model MUST create design documents using a single-source-of-truth approach:
+  - **Canonical Location**: `.claude/specs/{feature_name}/design.md` (primary source)
+  - **Secondary Location**: `.kiro/specs/{feature_name}/design.md` (automated copy)
+  - **Reconciliation**: The `.claude/specs/` version is authoritative; the `.kiro/specs/` version must be kept identical through automated synchronization (symlink, script, or manual copy)
+  - **Workflow**: Always edit the `.claude/specs/` version first, then ensure the `.kiro/specs/` version matches exactly
+
+### Research and Documentation Requirements
 - The model MUST identify areas where research is needed based on the feature requirements
 - The model MUST conduct research and build up context in the conversation thread
 - The model SHOULD NOT create separate research files, but instead use the research as context for the design and implementation plan
 - The model MUST summarize key findings that will inform the feature design
 - The model SHOULD cite sources and include relevant links in the conversation
-- The model MUST create a detailed design document at '.kiro/specs/{feature_name}/design.md'
 - The model MUST incorporate research findings directly into the design process
 - The model MUST include the following sections in the design document:
   - Overview

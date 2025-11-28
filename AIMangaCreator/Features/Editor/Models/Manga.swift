@@ -1,6 +1,6 @@
 import Foundation
 
-// Core project structure
+/// Core project structure
 struct Manga: Codable, Identifiable {
     let id: UUID
     var title: String
@@ -13,9 +13,10 @@ struct Manga: Codable, Identifiable {
     var characters: [Character]
     var metadata: MangaMetadata
     
-    // Computed properties
+    /// Computed properties
     var panelCount: Int { panels.count }
-    var totalPages: Int { (panelCount + 3) / 4 } // 4 panels per page standard
+    /// 4 panels per page standard
+    var totalPages: Int { (panelCount + 3) / 4 }
     
     static let preview = Manga(
         id: UUID(),
@@ -54,7 +55,7 @@ struct Panel: Codable, Identifiable {
     var estimatedTimeRemaining: TimeInterval?
     
     mutating func updateProgress(_ progress: Double) {
-        self.generationProgress = min(progress, 1.0)
+        self.generationProgress = min(max(progress, 0.0), 1.0)
     }
 }
 
@@ -127,13 +128,6 @@ enum DialogueStyle: String, Codable {
 }
 
 struct MangaMetadata: Codable {
-    var title: String?
-    var description: String?
-    var creator: String?
-    var createdDate: Date?
-    var modifiedDate: Date?
-    var characters: [Character]?
-
     var tags: [String]
     var genre: MangaGenre
     var targetAudience: String
@@ -141,36 +135,6 @@ struct MangaMetadata: Codable {
     var notes: String
     var collaborators: [Collaborator]
     var style: MangaStyle
-    
-    init(
-        title: String? = nil,
-        description: String? = nil,
-        creator: String? = nil,
-        createdDate: Date? = nil,
-        modifiedDate: Date? = nil,
-        characters: [Character]? = nil,
-        tags: [String],
-        genre: MangaGenre,
-        targetAudience: String,
-        status: ProjectStatus,
-        notes: String,
-        collaborators: [Collaborator],
-        style: MangaStyle
-    ) {
-        self.title = title
-        self.description = description
-        self.creator = creator
-        self.createdDate = createdDate
-        self.modifiedDate = modifiedDate
-        self.characters = characters
-        self.tags = tags
-        self.genre = genre
-        self.targetAudience = targetAudience
-        self.status = status
-        self.notes = notes
-        self.collaborators = collaborators
-        self.style = style
-    }
 }
 
 struct Collaborator: Codable, Identifiable {

@@ -4,6 +4,10 @@ import SwiftUI
 
 @MainActor
 class MangaEditorViewModel: NSObject, ObservableObject {
+    nonisolated var objectWillChange: ObservableObjectPublisher {
+        ObservableObjectPublisher()
+    }
+    
     @Published var manga: Manga
     @Published var error: AppError?
     @Published var isSaving = false
@@ -17,7 +21,7 @@ class MangaEditorViewModel: NSObject, ObservableObject {
     private let repository: MangaRepository
     private var aiProvider: AIProvider
     
-    // Initialization
+    /// Initialization
     init(
         manga: Manga,
         repository: MangaRepository = LocalMangaRepository.shared
@@ -77,9 +81,9 @@ class MangaEditorViewModel: NSObject, ObservableObject {
         
         undoManager.registerUndo(withTarget: self) { target in
             Task { @MainActor in
-                // This is a simplified undo, ideally we restore the exact panel object
-                // For now, we just add a new one or we should capture 'removed'
-                // But 'removed' is a struct, so it's copied.
+                /// This is a simplified undo, ideally we restore the exact panel object
+                /// For now, we just add a new one or we should capture 'removed'
+                /// But 'removed' is a struct, so it's copied.
                 target.restorePanel(removed, at: index)
             }
         }
@@ -153,7 +157,7 @@ class MangaEditorViewModel: NSObject, ObservableObject {
     }
     
     func autoSave() async {
-        // Debounced auto-save every 30 seconds
+        /// Debounced auto-save every 30 seconds
         try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
         await save()
     }

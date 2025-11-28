@@ -1,7 +1,7 @@
 import Foundation
 
 class ProjectService {
-    static let shared = ProjectService()
+    nonisolated(unsafe) static let shared = ProjectService()
     
     private let fileManager = FileManager.default
     private lazy var projectsDirectory: URL = {
@@ -24,21 +24,12 @@ class ProjectService {
         let projectDir = projectsDirectory.appendingPathComponent(manga.id.uuidString)
         try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
         
-        // Save metadata
+        /// Save manga
         let metadataPath = projectDir.appendingPathComponent("metadata.json")
-        // Update metadata with current manga properties
-        var metadata = manga.metadata
-        metadata.title = manga.title
-        metadata.description = manga.description
-        metadata.creator = manga.creator
-        metadata.createdDate = manga.createdDate
-        metadata.modifiedDate = manga.modifiedDate
-        metadata.characters = manga.characters
-        
-        let jsonData = try JSONEncoder().encode(metadata)
+        let jsonData = try JSONEncoder().encode(manga)
         try jsonData.write(to: metadataPath)
         
-        // Save panels with images
+        /// Save panels with images
         let panelsDir = projectDir.appendingPathComponent("panels")
         try fileManager.createDirectory(at: panelsDir, withIntermediateDirectories: true)
         
@@ -46,15 +37,15 @@ class ProjectService {
             let panelDir = panelsDir.appendingPathComponent("\(index)")
             try fileManager.createDirectory(at: panelDir, withIntermediateDirectories: true)
             
-            // Save panel data
+            /// Save panel data
             let panelPath = panelDir.appendingPathComponent("panel.json")
             let panelJSON = try JSONEncoder().encode(panel)
             try panelJSON.write(to: panelPath)
             
-            // Copy image if exists
+            /// Copy image if exists
             if let imageURL = panel.generatedImageURL {
                 let destPath = panelDir.appendingPathComponent("image.png")
-                // Only copy if it's not already there
+                /// Only copy if it's not already there
                 if imageURL.path != destPath.path {
                     if fileManager.fileExists(atPath: destPath.path) {
                         try fileManager.removeItem(at: destPath)
@@ -67,46 +58,43 @@ class ProjectService {
     
     func load(projectID: UUID) throws -> Manga {
         let projectDir = projectsDirectory.appendingPathComponent(projectID.uuidString)
-        
+
         let metadataPath = projectDir.appendingPathComponent("metadata.json")
         let metadataData = try Data(contentsOf: metadataPath)
-        let metadata = try JSONDecoder().decode(MangaMetadata.self, from: metadataData)
-        
-        // Load panels
+        var manga = try JSONDecoder().decode(Manga.self, from: metadataData)
+
+        /// Load panels with images
         let panelsDir = projectDir.appendingPathComponent("panels")
-        let panelDirs = try fileManager.contentsOfDirectory(
-            at: panelsDir,
-            includingPropertiesForKeys: nil
-        ).sorted { 
-            ($0.lastPathComponent as NSString).integerValue <
-            ($1.lastPathComponent as NSString).integerValue
-        }
-        
-        var panels: [Panel] = []
-        for panelDir in panelDirs {
-            let panelPath = panelDir.appendingPathComponent("panel.json")
-            let panelData = try Data(contentsOf: panelPath)
-            var panel = try JSONDecoder().decode(Panel.self, from: panelData)
-            
-            let imagePath = panelDir.appendingPathComponent("image.png")
-            if fileManager.fileExists(atPath: imagePath.path) {
-                panel.generatedImageURL = imagePath
+        if fileManager.fileExists(atPath: panelsDir.path) {
+            let panelDirs = try fileManager.contentsOfDirectory(
+                at: panelsDir,
+                includingPropertiesForKeys: nil
+            ).compactMap { url -> (URL, Int)? in
+                guard let panelNumber = Int(url.lastPathComponent) else {
+                    print("Warning: Skipping non-numeric panel directory: \(url.lastPathComponent)")
+                    return nil
+                }
+                return (url, panelNumber)
+            }.sorted { $0.1 < $1.1 }
+             .map { $0.0 }
+
+            var panels: [Panel] = []
+            for panelDir in panelDirs {
+                let panelPath = panelDir.appendingPathComponent("panel.json")
+                let panelData = try Data(contentsOf: panelPath)
+                var panel = try JSONDecoder().decode(Panel.self, from: panelData)
+
+                let imagePath = panelDir.appendingPathComponent("image.png")
+                if fileManager.fileExists(atPath: imagePath.path) {
+                    panel.generatedImageURL = imagePath
+                }
+
+                panels.append(panel)
             }
-            
-            panels.append(panel)
+            manga.panels = panels
         }
-        
-        return Manga(
-            id: projectID,
-            title: metadata.title ?? "Untitled",
-            description: metadata.description ?? "",
-            creator: metadata.creator ?? "Unknown",
-            createdDate: metadata.createdDate ?? Date(),
-            modifiedDate: metadata.modifiedDate ?? Date(),
-            panels: panels,
-            characters: metadata.characters ?? [],
-            metadata: metadata
-        )
+
+        return manga
     }
     
     func listProjects() throws -> [Manga] {

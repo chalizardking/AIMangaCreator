@@ -1,8 +1,13 @@
 import Foundation
 import AppKit
+import Combine
 
 @MainActor
 class PanelGeneratorViewModel: ObservableObject {
+    nonisolated var objectWillChange: ObservableObjectPublisher {
+        ObservableObjectPublisher()
+    }
+    
     @Published var currentPrompt: String = ""
     @Published var selectedStyle: MangaStyle = MangaStyle.allCases.first!
     @Published var selectedCharacters: [CharacterReference] = []
@@ -41,7 +46,6 @@ class PanelGeneratorViewModel: ObservableObject {
         generationProgress = 0.0
         
         do {
-            let startTime = Date()
             let generatedImage = try await aiProvider.generateImage(
                 prompt: currentPrompt,
                 style: selectedStyle,
@@ -51,7 +55,8 @@ class PanelGeneratorViewModel: ObservableObject {
             self.lastGeneratedImage = NSImage(data: generatedImage.imageData)
             self.generationProgress = 1.0
             
-            // Logger.info("Panel generated in \(Date().timeIntervalSince(startTime))s")
+            /// TODO: Uncomment when Logger is implemented
+            /// Logger.info("Panel generated in \(Date().timeIntervalSince(startTime))s")
         } catch {
             self.error = error as? AppError ?? .unknown(error)
             throw error

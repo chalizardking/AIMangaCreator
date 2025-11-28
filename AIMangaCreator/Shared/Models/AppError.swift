@@ -12,6 +12,8 @@ enum AppError: LocalizedError {
     case unauthorized(String)
     case rateLimited(retryAfter: TimeInterval)
     case notImplemented(String)
+    case imageGenerationFailed(String)
+    case promptValidationFailed(String)
     case unknown(Error)
     
     var errorDescription: String? {
@@ -38,6 +40,10 @@ enum AppError: LocalizedError {
             return "Rate limited. Retry in \(Int(retryAfter)) seconds."
         case .notImplemented(let feature):
             return "Feature not yet implemented: \(feature)"
+        case .imageGenerationFailed(let msg):
+            return "Image generation failed: \(msg)"
+        case .promptValidationFailed(let msg):
+            return "Prompt validation failed: \(msg)"
         case .unknown(let error):
             return "Unknown error: \(error.localizedDescription)"
         }
@@ -57,6 +63,10 @@ enum AppError: LocalizedError {
             return "Wait \(Int(retryAfter)) seconds before retrying."
         case .notImplemented:
             return "This feature will be available in a future update."
+        case .imageGenerationFailed:
+            return "Try modifying your prompt or style settings."
+        case .promptValidationFailed:
+            return "Please review and correct your prompt."
         default:
             return "Please try again or contact support."
         }

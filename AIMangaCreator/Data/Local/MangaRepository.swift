@@ -7,7 +7,7 @@ protocol MangaRepository {
     func delete(_ id: UUID) async throws
 }
 
-// Concrete implementation using ProjectService
+/// Concrete implementation using ProjectService
 class LocalMangaRepository: MangaRepository {
     static let shared = LocalMangaRepository()
     private let service = ProjectService.shared

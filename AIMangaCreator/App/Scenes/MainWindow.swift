@@ -9,94 +9,162 @@ struct MainWindow: Scene {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Project") {
-                    // Trigger new project action
+                    NotificationCenter.default.post(name: .newProject, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
             
             CommandGroup(replacing: .saveItem) {
-                Button("Save") { /* Save logic */ }
-                    .keyboardShortcut("s", modifiers: .command)
+                Button("Save") {
+                    NotificationCenter.default.post(name: .saveProject, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: .command)
                 
-                Button("Export") { /* Export logic */ }
-                    .keyboardShortcut("e", modifiers: [.command, .shift])
+                Button("Export") {
+                    NotificationCenter.default.post(name: .exportProject, object: nil)
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
             }
         }
     }
 }
 
-// Main content area
+// MARK: - Notification Names
+/// Notification names for menu commands
+extension Notification.Name {
+    static let newProject = Notification.Name("newProject")
+    static let saveProject = Notification.Name("saveProject")
+    static let exportProject = Notification.Name("exportProject")
+}
+
+// MARK: - Main Content View
+/// Main content area
 struct ContentView: View {
     @StateObject private var projectVM = ProjectManagerViewModel()
     @State private var selectedView: AppView = .browser
+    @State private var showingNewProjectSheet = false
     
-    enum AppView {
+    enum AppView: Hashable {
         case browser
         case editor
+        case generator
         case settings
     }
     
     var body: some View {
         NavigationSplitView {
-            // Sidebar
-            SidebarView(selectedView: $selectedView)
+            /// Sidebar
+            SidebarView(
+                selectedView: $selectedView,
+                projectCount: projectVM.projects.count
+            )
         } detail: {
-            // Main content area
-            switch selectedView {
-            case .browser:
-                ProjectBrowserView(viewModel: projectVM)
-            case .editor:
-                if let project = projectVM.selectedProject {
-                    // We create a new VM for the editor. 
-                    // In a real app, we might want to manage the lifecycle of this VM better.
-                    let editorVM = MangaEditorViewModel(manga: project)
-                    MangaEditorView(viewModel: editorVM)
-                } else {
-                    EmptyProjectView()
+            /// Main content area
+            Group {
+                switch selectedView {
+                case .browser:
+                    ProjectBrowserView(viewModel: projectVM)
+                case .editor:
+                    if let project = projectVM.selectedProject {
+                        MangaEditorView(viewModel: MangaEditorViewModel(manga: project))
+                            /// Force view refresh when project changes
+                            .id(project.id)
+                    } else {
+                        EmptyProjectView(onCreateProject: {
+                            showingNewProjectSheet = true
+                        })
+                    }
+                case .generator:
+                    GeneratorView(viewModel: PanelGeneratorViewModel())
+                case .settings:
+                    SettingsView()
                 }
-            case .settings:
-                Text("Settings View Placeholder")
             }
         }
-        .onChange(of: projectVM.selectedProject?.id) { _ in
-            if projectVM.selectedProject != nil {
+        .navigationSplitViewStyle(.balanced)
+        .onChange(of: projectVM.selectedProject?.id) { _, newValue in
+            if newValue != nil {
                 selectedView = .editor
+            }
+        }
+        .sheet(isPresented: $showingNewProjectSheet) {
+            NewProjectSheet(viewModel: projectVM)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .newProject)) { _ in
+            showingNewProjectSheet = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .saveProject)) { _ in
+            if let project = projectVM.selectedProject {
+                Task {
+                    let vm = MangaEditorViewModel(manga: project)
+                    await vm.save()
+                }
             }
         }
     }
 }
 
 struct EmptyProjectView: View {
+    let onCreateProject: () -> Void
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+            Image(systemName: "book.closed")
+                .font(.system(size: 80))
+                .foregroundColor(.secondary)
+            
             Text("No Project Selected")
                 .font(.title)
+                .foregroundColor(.primary)
+            
+            Text("Create a new project or select an existing one from the sidebar")
                 .foregroundColor(.secondary)
-            Text("Select a project from the browser or create a new one.")
-                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button(action: onCreateProject) {
+                Label("Create New Project", systemImage: "plus.circle.fill")
+                    .font(.headline)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
         }
+        .padding(40)
     }
 }
 
-// Sidebar navigation
+// MARK: - Sidebar Navigation
+/// Sidebar navigation
 struct SidebarView: View {
     @Binding var selectedView: ContentView.AppView
-    @State private var expandProjects = true
+    let projectCount: Int
     
     var body: some View {
         List(selection: $selectedView) {
             Section("Navigation") {
-                NavigationLink(value: ContentView.AppView.browser) {
+                Button(action: { selectedView = .browser }) {
                     Label("Projects", systemImage: "folder.fill")
                 }
+                .tag(ContentView.AppView.browser)
                 
-                NavigationLink(value: ContentView.AppView.settings) {
+                Button(action: { selectedView = .editor }) {
+                    Label("Editor", systemImage: "pencil.and.outline")
+                }
+                .tag(ContentView.AppView.editor)
+                
+                Button(action: { selectedView = .generator }) {
+                    Label("Generator", systemImage: "wand.and.stars")
+                }
+                .tag(ContentView.AppView.generator)
+                
+                Button(action: { selectedView = .settings }) {
                     Label("Settings", systemImage: "gear")
                 }
+                .tag(ContentView.AppView.settings)
             }
             
-            NavigationLink(value: ContentView.AppView.editor) {
-                Label("Editor", systemImage: "pencil.and.outline")
+            Section("Info") {
+                LabeledContent("Projects", value: "\(projectCount)")
+                    .font(.caption)
             }
         }
         .listStyle(.sidebar)

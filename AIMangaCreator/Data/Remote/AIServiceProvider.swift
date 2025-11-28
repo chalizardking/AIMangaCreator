@@ -22,7 +22,8 @@ protocol AIProvider {
 
 struct GeneratedImage {
     let imageData: Data
-    let imageURL: URL // Cached locally
+    /// Cached locally
+    let imageURL: URL
     let metadata: ImageMetadata
     let generationTime: TimeInterval
 }
@@ -37,7 +38,8 @@ struct ImageMetadata {
 }
 
 struct ConsistencyReport {
-    let overallScore: Double // 0.0-1.0
+    /// 0.0-1.0
+    let overallScore: Double
     let characterRecognitionConfidence: Double
     let styleConsistency: Double
     let issues: [ConsistencyIssue]
@@ -58,7 +60,7 @@ enum AIProviderType: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-// Implementation for OpenAI GPT-4 Vision
+/// Implementation for OpenAI GPT-4 Vision
 class OpenAIProvider: AIProvider {
     private let apiKey: String
     private let apiClient: APIClient
@@ -99,7 +101,7 @@ class OpenAIProvider: AIProvider {
             throw AppError.imageProcessingFailed("No image in response")
         }
         
-        // Download and cache image
+        /// Download and cache image
         let imageData = try await downloadImage(from: imageURLString)
         let cachedURL = try cacheImage(imageData)
         
@@ -108,7 +110,8 @@ class OpenAIProvider: AIProvider {
             imageURL: cachedURL,
             metadata: ImageMetadata(
                 model: "dall-e-3",
-                seed: nil, // DALL-E 3 does not provide reproducible seeds
+                /// DALL-E 3 does not provide reproducible seeds
+                seed: nil,
                 width: 1024,
                 height: 1024,
                 steps: nil,
@@ -165,7 +168,7 @@ class OpenAIProvider: AIProvider {
         throw AppError.notImplemented("Character consistency analysis")
     }
     
-    // Helper methods
+    /// Helper methods
     private func downloadImage(from urlString: String) async throws -> Data {
         guard let url = URL(string: urlString) else {
             throw AppError.invalidInput("Invalid image URL")
@@ -288,15 +291,11 @@ class GeminiProvider: AIProvider {
             contents: [GeminiContent(parts: [GeminiPart(text: fullPrompt)])]
         )
         
-        let endpoint = "/v1beta/models/gemini-pro:generateContent"
-        let headers = [
-            "x-goog-api-key": apiKey
-        ]
-
+        let endpoint = "/v1beta/models/gemini-pro:generateContent?key=\(apiKey)"
+        
         let response = try await apiClient.post(
             endpoint: endpoint,
             body: request,
-            headers: headers,
             baseURL: "https://generativelanguage.googleapis.com"
         ) as GeminiGenerateContentResponse
         
@@ -312,7 +311,7 @@ class GeminiProvider: AIProvider {
     }
 }
 
-// Gemini Data Structures
+/// Gemini Data Structures
 struct GeminiGenerateContentRequest: Encodable {
     let contents: [GeminiContent]
 }
@@ -332,7 +331,7 @@ struct GeminiGenerateContentResponse: Decodable {
     let candidates: [Candidate]?
 }
 
-// Data structures for API communication
+/// Data structures for API communication
 struct ImageGenerationRequest: Encodable {
     let prompt: String
     let model: String

@@ -6,19 +6,41 @@ struct Character: Codable, Identifiable {
     var description: String
     var referenceImageURL: URL?
     var traits: CharacterTraits
-    var relationships: [String: String] // Character name -> relationship description
+    /// Character name -> relationship description
+    var relationships: [String: String]
 }
 
 struct CharacterTraits: Codable {
-    var appearance: String // Physical description
-    var personality: [String] // Keywords: brave, cheerful, mysterious
+    /// Physical description
+    var appearance: String
+    /// Keywords: brave, cheerful, mysterious
+    var personality: [String]
     var clothingStyle: String
-    var distinguishingFeatures: [String] // Scars, tattoos, unique accessories
+    /// Scars, tattoos, unique accessories
+    var distinguishingFeatures: [String]
 }
 
 struct CharacterReference: Codable {
     var characterID: UUID
-    var action: String // What they're doing in this panel
-    var expression: String // happy, angry, shocked, etc.
-    var position: String // left, center, right
+    /// What they're doing in this panel
+    var action: String
+    /// happy, angry, shocked, etc.
+    var expression: String
+    /// left, center, right
+    var position: String
 }
+
+// MARK: - Protocol Conformances
+extension Character: Equatable, Hashable {
+    static func == (lhs: Character, rhs: Character) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+extension CharacterTraits: Equatable, Hashable { }
+
+extension CharacterReference: Equatable, Hashable { }

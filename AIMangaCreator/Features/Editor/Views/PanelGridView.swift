@@ -61,29 +61,46 @@ struct PanelThumbnail: View {
     
     var body: some View {
         ZStack {
-            // Panel background
-            Color.white
-            
-            // Generated image
+            panelBackground
+            generatedImage
+            generationOverlay
+            selectionOutline
+        }
+        .onTapGesture(perform: onSelect)
+    }
+}
+
+private extension PanelThumbnail {
+    var panelBackground: some View {
+        Color.white
+    }
+    
+    var generatedImage: some View {
+        Group {
             if let imageURL = panel.generatedImageURL,
                let nsImage = NSImage(contentsOf: imageURL) {
                 Image(nsImage: nsImage)
                     .resizable()
                     .scaledToFill()
             }
-            
-            // Generation progress
+        }
+    }
+    
+    var generationOverlay: some View {
+        Group {
             if case .generating = panel.generationStatus {
                 ProgressView(value: panel.generationProgress)
                     .padding()
             }
-            
-            // Selection border
+        }
+    }
+    
+    var selectionOutline: some View {
+        Group {
             if isSelected {
                 RoundedRectangle(cornerRadius: 4)
                     .stroke(Color.blue, lineWidth: 3)
             }
         }
-        .onTapGesture(perform: onSelect)
     }
 }
