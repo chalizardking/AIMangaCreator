@@ -75,6 +75,7 @@ class OpenAIProvider: AIProvider {
         style: MangaStyle,
         characterGuides: [CharacterReference]
     ) async throws -> GeneratedImage {
+        let startTime = Date()
         let enhancedPrompt = try await refinePrompt(
             original: prompt,
             style: style,
@@ -117,7 +118,7 @@ class OpenAIProvider: AIProvider {
                 steps: nil,
                 guidanceScale: nil
             ),
-            generationTime: Date().timeIntervalSince(Date())
+            generationTime: Date().timeIntervalSince(startTime)
         )
     }
     
@@ -126,14 +127,7 @@ class OpenAIProvider: AIProvider {
         style: MangaStyle,
         context: String
     ) async throws -> String {
-        let systemPrompt = """
-        You are a manga scene description expert. Enhance prompts for manga-style image generation.
-        - Include manga-specific details: panel composition, visual flow, art style
-        - Maintain character consistency references
-        - Style: \(style.genre.rawValue) genre, \(style.artStyle.detailLevel.rawValue) details
-        - Keep descriptions under 200 tokens
-        - Return ONLY the refined prompt, no explanations
-        """
+        let systemPrompt = PromptFactory.refinePrompt(style: style, context: context)
         
         let request = ChatCompletionRequest(
             model: "gpt-4-turbo",
@@ -163,7 +157,7 @@ class OpenAIProvider: AIProvider {
         referenceImage: NSImage,
         panelImage: NSImage
     ) async throws -> ConsistencyReport {
-        // Implementation for vision analysis
+        // TODO: Implement character consistency analysis for OpenAI.
         // This would use GPT-4 Vision to compare images
         throw AppError.notImplemented("Character consistency analysis")
     }
@@ -214,20 +208,14 @@ class OpenRouterProvider: AIProvider {
     }
     
     func generateImage(prompt: String, style: MangaStyle, characterGuides: [CharacterReference]) async throws -> GeneratedImage {
+        // TODO: Implement image generation for OpenRouter.
         // OpenRouter primarily handles LLMs. For image generation, we might need to fallback or use a specific model if supported.
         // Assuming OpenRouter might proxy some image models or we throw not supported.
         throw AppError.apiError(.invalidRequest, "Image generation not supported by OpenRouter provider yet.")
     }
     
     func refinePrompt(original: String, style: MangaStyle, context: String) async throws -> String {
-        let systemPrompt = """
-        You are a manga scene description expert. Enhance prompts for manga-style image generation.
-        - Include manga-specific details: panel composition, visual flow, art style
-        - Maintain character consistency references
-        - Style: \(style.genre.rawValue) genre, \(style.artStyle.detailLevel.rawValue) details
-        - Keep descriptions under 200 tokens
-        - Return ONLY the refined prompt, no explanations
-        """
+        let systemPrompt = PromptFactory.refinePrompt(style: style, context: context)
         
         let request = ChatCompletionRequest(
             model: "anthropic/claude-3-opus", // Example OpenRouter model
@@ -258,6 +246,7 @@ class OpenRouterProvider: AIProvider {
     }
     
     func analyzeCharacterConsistency(referenceImage: NSImage, panelImage: NSImage) async throws -> ConsistencyReport {
+        // TODO: Implement character consistency analysis.
         throw AppError.notImplemented("Character consistency analysis")
     }
 }
@@ -272,18 +261,12 @@ class GeminiProvider: AIProvider {
     }
     
     func generateImage(prompt: String, style: MangaStyle, characterGuides: [CharacterReference]) async throws -> GeneratedImage {
+        // TODO: Implement image generation for Gemini.
          throw AppError.apiError(.invalidRequest, "Image generation not supported by Gemini provider yet.")
     }
     
     func refinePrompt(original: String, style: MangaStyle, context: String) async throws -> String {
-        let systemPrompt = """
-        You are a manga scene description expert. Enhance prompts for manga-style image generation.
-        - Include manga-specific details: panel composition, visual flow, art style
-        - Maintain character consistency references
-        - Style: \(style.genre.rawValue) genre, \(style.artStyle.detailLevel.rawValue) details
-        - Keep descriptions under 200 tokens
-        - Return ONLY the refined prompt, no explanations
-        """
+        let systemPrompt = PromptFactory.refinePrompt(style: style, context: context)
         
         let fullPrompt = "\(systemPrompt)\n\nOriginal: \(original)\nContext: \(context)"
         
@@ -307,6 +290,7 @@ class GeminiProvider: AIProvider {
     }
     
     func analyzeCharacterConsistency(referenceImage: NSImage, panelImage: NSImage) async throws -> ConsistencyReport {
+        // TODO: Implement character consistency analysis.
         throw AppError.notImplemented("Character consistency analysis")
     }
 }

@@ -4,10 +4,7 @@ import Combine
 
 @MainActor
 class PanelGeneratorViewModel: ObservableObject {
-    nonisolated var objectWillChange: ObservableObjectPublisher {
-        ObservableObjectPublisher()
-    }
-    
+
     @Published var currentPrompt: String = ""
     @Published var selectedStyle: MangaStyle = MangaStyle.allCases.first!
     @Published var selectedCharacters: [CharacterReference] = []
@@ -21,26 +18,22 @@ class PanelGeneratorViewModel: ObservableObject {
     }
     
     private var aiProvider: AIProvider
-    
-    init() {
-        self.aiProvider = OpenAIProvider(apiKey: Config.openAIKey)
+    private let factory: AIProviderFactory
+
+    init(factory: AIProviderFactory = AIProviderFactory()) {
+        self.factory = factory
+        self.aiProvider = factory.provider(for: .openAI)
     }
     
     private func updateProvider() {
-        switch selectedProviderType {
-        case .openAI:
-            self.aiProvider = OpenAIProvider(apiKey: Config.openAIKey)
-        case .gemini:
-            self.aiProvider = GeminiProvider(apiKey: Config.geminiKey)
-        case .openRouter:
-            self.aiProvider = OpenRouterProvider(apiKey: Config.openRouterKey)
-        }
+        self.aiProvider = factory.provider(for: selectedProviderType)
     }
     
     @MainActor
-    func generatePanel() async throws {
+    func generatePanel() async {
         guard !currentPrompt.isEmpty else {
-            throw AppError.invalidInput("Prompt cannot be empty")
+            self.error = .invalidInput("Prompt cannot be empty")
+            return
         }
         
         generationProgress = 0.0
@@ -59,7 +52,6 @@ class PanelGeneratorViewModel: ObservableObject {
             /// Logger.info("Panel generated in \(Date().timeIntervalSince(startTime))s")
         } catch {
             self.error = error as? AppError ?? .unknown(error)
-            throw error
         }
     }
     
